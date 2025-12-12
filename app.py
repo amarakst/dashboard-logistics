@@ -40,6 +40,7 @@ def get_data():
         'Ekspedisi_3PL': ['Logistik Cepat', 'Truk Nusantara', 'Cargo Kilat', 'Logistik Cepat'],
         'Sopir': ['Budi', 'Asep', 'Joko', 'Rian'],
         'Kontak_Sopir': ['0856-7788-9900', '0857-1122-3344', '0858-5566-7788', '0856-7788-9900'],
+        'Kode_Tracking_Publik': ['SPAB-001X', 'SPAB-002Y', 'SPAB-003Z', 'SPAB-004A'],
         'ETA': [datetime.date.today(), datetime.date.today(), datetime.date.today() - datetime.timedelta(days=1), datetime.date.today() + datetime.timedelta(days=2)],
         'Lat': [-7.2575, -6.9175, -6.9667, 3.5952], # Koordinat dummy
         'Lon': [112.7521, 107.6191, 110.4167, 98.6722],
@@ -130,7 +131,48 @@ def show_dashboard():
     if low_stock_count > 0:
         for index, row in inventory_df[inventory_df['Stok'] < inventory_df['Min_Stok']].iterrows():
             st.warning(f"ALERT: Stok {row['Nama_Barang']} ({row['Stok']} {row['Satuan']}) di bawah batas aman!")
+            
+# --- TRACKING PUBLIK UNTUK PELANGGAN ---
+def show_public_tracking():
+    st.title("📦 Pelacakan Pesanan Anda")
+    st.subheader("PT. Sinar Pangan Abadi - Customer Tracking")
+    
+    # Form input untuk Kode Pelacakan
+    tracking_code = st.text_input("Masukkan Kode Pelacakan (Contoh: SPAB-001X)", "")
+    
+    if tracking_code:
+        # Cari data berdasarkan Kode Pelacakan Publik
+        result_df = shipment_df[shipment_df['Kode_Tracking_Publik'] == tracking_code.upper().strip()]
+        
+        if not result_df.empty:
+            detail = result_df.iloc[0]
+            
+            st.success(f"Status Ditemukan untuk Pesanan Tujuan: **{detail['Tujuan']}**")
+            
+            col1, col2, col3 = st.columns(3)
+            col1.metric("Status Terkini", detail['Status'])
+            col2.metric("Estimasi Waktu Tiba (ETA)", detail['ETA'].strftime('%d %B %Y'))
+            col3.metric("Ekspedisi", detail['Ekspedisi_3PL'])
+            
+            st.divider()
+            
+            # Tampilkan Peta Sederhana (Jika posisi tersedia)
+            st.subheader("Lokasi Terakhir Kendaraan")
+            
+            # Filter hanya koordinat yang ditemukan
+            map_data = result_df[['Lat', 'Lon']].dropna()
+            if not map_data.empty:
+                st.map(map_data, latitude='Lat', longitude='Lon', zoom=6)
+                st.caption("*Data lokasi diperbarui secara real-time.*")
+            else:
+                 st.info("Informasi lokasi detail belum tersedia.")
 
+            # Berikan informasi kontak tim Sales/CS jika ada masalah
+            st.markdown("---")
+            st.markdown("Jika ada pertanyaan lebih lanjut, silakan hubungi tim Customer Service kami.")
+            
+        else:
+            st.error(f"Kode pelacakan **{tracking_code}** tidak ditemukan atau tidak valid.")
 # --- WAREHOUSE MANAGEMENT ---
 def show_warehouse():
     st.title("🏭 Warehouse Management")
@@ -332,9 +374,17 @@ def show_incidents():
 def main():
     if 'logged_in' not in st.session_state:
         st.session_state['logged_in'] = False
+        st.session_state['public_mode'] = False
 
     if not st.session_state['logged_in']:
-        login_page()
+        st.sidebar.title("Akses Portal")
+        mode = st.sidebar.radio("Pilih Akses:", ["Login Internal", "Customer Tracking"])
+        if mode == "Login Internal":
+            st.session_state['public_mode'] = False
+            login_page()
+        else:
+            st.session_state['public_mode'] = True
+            show_public_tracking()
     else:
         # Sidebar Menu
         with st.sidebar:
@@ -369,6 +419,7 @@ def main():
 if __name__ == "__main__":
 
     main()
+
 
 
 
