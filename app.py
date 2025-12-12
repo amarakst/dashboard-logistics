@@ -403,7 +403,7 @@ def main():
         # Routing Halaman
         if menu == "Dashboard Utama":
             show_dashboard()
-        elif menu == "Order Status (E2E)":
+        elif menu == "Order Status":
             show_order_status()
         elif menu == "Warehouse":
             show_warehouse()
@@ -419,6 +419,7 @@ def main():
 if __name__ == "__main__":
 
     main()
+
 
 
 
