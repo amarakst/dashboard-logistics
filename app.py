@@ -8,10 +8,20 @@ import time
 st.set_page_config(page_title="Sinar Pangan Control Tower", layout="wide", page_icon="🚚")
 
 # --- DATA DUMMY (MENSIMULASIKAN DATABASE TERINTEGRASI) ---
-# Anya butuh "Single Source of Truth" 
-# Kita buat data dummy agar sistem bisa langsung dicoba tanpa database SQL.
 
 def get_data():
+    # Data Pesanan End-to-End (Order Status) - Menjawab Single Source of Truth
+    order_data = pd.DataFrame({
+        'ID_Pesanan': ['ORD-1001', 'ORD-1002', 'ORD-1003', 'ORD-1004'],
+        'Distributor': ['Surabaya', 'Bandung', 'Semarang', 'Medan'],
+        'Status_Hulu': ['RM Dipesan', 'RM Diterima', 'RM Diterima', 'RM Dipesan'], # Status Bahan Baku
+        'Status_Pabrik': ['Belum Produksi', 'Sedang Produksi', 'Selesai Produksi', 'Belum Produksi'],
+        'Status_Gudang': ['Menunggu', 'Menunggu', 'Siap Kirim', 'Menunggu'],
+        'Status_Logistik': ['Menunggu', 'Delayed', 'Delivered', 'In Transit'], # Hubungan ke SHP-ID
+        'ID_Pengiriman_Terkait': [None, 'SHP-002', 'SHP-003', 'SHP-004'],
+        'Tanggal_Pesan': [datetime.date.today() - datetime.timedelta(days=7), datetime.date.today() - datetime.timedelta(days=5), datetime.date.today() - datetime.timedelta(days=10), datetime.date.today() - datetime.timedelta(days=4)],
+    })
+    
     # Data Stok Gudang (Warehouse)
     inventory_data = pd.DataFrame({
         'Kode_Barang': ['RM-001', 'RM-002', 'FG-101', 'FG-102'],
@@ -34,10 +44,21 @@ def get_data():
         'Lon': [112.7521, 107.6191, 110.4167, 98.6722],
         'Penyebab_Masalah': [None, 'Macet > 2 Jam', None, None]
     })
+    
+    # Data Log Penanganan Pengecualian
+    incident_data = pd.DataFrame({
+        'ID_Insiden': ['INC-001'],
+        'Tipe_Masalah': ['Pengiriman Terlambat'],
+        'Terkait': ['SHP-002'],
+        'Deskripsi_Masalah': ['Macet > 2 Jam di Tol Cipali'],
+        'Tindakan_Korektif': ['Hubungi Sopir Asep, Alihkan ke Jalur Alternatif'],
+        'Status': ['Selesai'],
+        'Tanggal_Update': [datetime.datetime.now()]
+    })
 
-    return inventory_data, shipment_data
+    return inventory_data, shipment_data, order_data, incident_data
 
-inventory_df, shipment_df = get_data()
+inventory_df, shipment_df, order_df, incident_df = get_data()
 
 # --- FUNGSI LOGIN ---
 def login_page():
@@ -172,7 +193,7 @@ def show_reports():
     st.title("📈 Laporan & Analisa")
     st.markdown("Mengidentifikasi bottleneck dan mengukur performa[cite: 22].")
 
-    tab1, tab2 = st.tabs(["Performa Pengiriman", "Akar Masalah Keterlambatan"])
+   tab1, tab2, tab3 = st.tabs(["Performa Pengiriman", "Akar Masalah Keterlambatan", "Analisa Lead Time"]) 
 
     with tab1:
         # Grafik Pie Chart Status Pengiriman
@@ -192,6 +213,20 @@ def show_reports():
         df_prob = pd.DataFrame(list(problems.items()), columns=['Penyebab', 'Jumlah Kasus'])
         fig_bar = px.bar(df_prob, x='Penyebab', y='Jumlah Kasus', title='Penyebab Keterlambatan Terbanyak', color='Penyebab')
         st.plotly_chart(fig_bar)
+    with tab3: # Tab baru
+        st.subheader("Analisa Lead Time Berdasarkan Tahap")
+        # Data dummy untuk Lead Time Tahapan
+        lead_time_data = pd.DataFrame({
+            'Tahap': ['Order to Produce', 'Produce to Warehouse', 'Warehouse to Customer'],
+            'Waktu_Rata2_Hari': [1.5, 1.0, 2.7],
+            'Benchmark_Hari': [1.0, 0.5, 2.0]
+        })
+        fig_lt = px.bar(lead_time_data, x='Tahap', y=['Waktu_Rata2_Hari', 'Benchmark_Hari'], 
+                         barmode='group', title='Lead Time vs Target per Tahap',
+                         labels={'value': 'Waktu (Hari)', 'variable': 'Metrik'})
+        st.plotly_chart(fig_lt, use_container_width=True)
+        
+        st.caption("Visualisasi ini membantu mengidentifikasi 'Warehouse to Customer' sebagai **bottleneck** terbesar.")
 
     # Fitur Ekspor
     st.divider()
@@ -218,7 +253,79 @@ def show_partners():
     })
     
     st.table(partners)
+    
+# --- ORDER STATUS END-TO-END ---
+def show_order_status():
+    st.title("📦 Order Status End-to-End")
+    st.markdown("Visibilitas status pesanan dari Bahan Baku hingga Pengiriman.")
+    
+    # Filter dan Pencarian
+    col1, col2 = st.columns(2)
+    search_order = col1.text_input("🔍 Cari ID Pesanan/Distributor", "")
+    status_filter = col2.multiselect("Filter Status Logistik:", options=order_df['Status_Logistik'].unique(), default=order_df['Status_Logistik'].unique())
+    
+    filtered_orders = order_df[order_df['Status_Logistik'].isin(status_filter)]
+    if search_order:
+        filtered_orders = filtered_orders[filtered_orders['Distributor'].str.contains(search_order, case=False) | filtered_orders['ID_Pesanan'].str.contains(search_order, case=False)]
+        
+    st.dataframe(filtered_orders, use_container_width=True)
+    
+    # Visualisasi Rantai Pasok (Simulasi Aliran)     st.subheader("Visualisasi Aliran Status Rantai Pasok")
+    # Tampilkan Flow Chart/Diagram Status
+    # Contoh visualisasi sederhana:
+    status_counts = filtered_orders['Status_Logistik'].value_counts().reset_index()
+    status_counts.columns = ['Status', 'Jumlah']
+    fig = px.sunburst(
+        filtered_orders, 
+        path=['Status_Hulu', 'Status_Pabrik', 'Status_Gudang', 'Status_Logistik'], 
+        title='Aliran Status E2E (Sunburst Chart)'
+    )
+    st.plotly_chart(fig, use_container_width=True)
 
+    st.caption("Memvisualisasikan 4 tahapan utama: Hulu (Bahan Baku), Pabrik (Produksi), Gudang, dan Logistik.")
+
+# --- MANAJEMEN INSIDEN/PENGECUALIAN ---
+def show_incidents():
+    st.title("🚨 Manajemen Insiden Proaktif")
+    st.markdown("Mencatat dan menindaklanjuti peringatan dini.")
+    
+    st.subheader("Log Insiden Aktif & Riwayat")
+    
+    # Tampilan Log
+    st.dataframe(incident_df, use_container_width=True)
+    
+    st.divider()
+    
+    # Form Input Tindak Lanjut
+    st.subheader("Tambahkan Tindakan Korektif Baru")
+    
+    with st.form("incident_form"):
+        col1, col2 = st.columns(2)
+        
+        related_id = col1.selectbox("Terkait Pengiriman (SHP-ID)", shipment_df['ID_Pengiriman'])
+        problem_type = col2.selectbox("Tipe Masalah", ['Pengiriman Terlambat', 'Stok Tidak Cukup', 'Kualitas Bahan Baku'])
+        
+        description = st.text_area("Deskripsi Masalah")
+        action = st.text_area("Tindakan Korektif yang Diambil")
+        
+        status = st.radio("Status Penanganan", ['Baru', 'Dalam Proses', 'Selesai'])
+        
+        if st.form_submit_button("Simpan Insiden & Tindakan"):
+            # Simulasi penambahan data baru
+            new_id = f"INC-{len(incident_df) + 1:03d}"
+            new_row = pd.DataFrame([{
+                'ID_Insiden': new_id,
+                'Tipe_Masalah': problem_type,
+                'Terkait': related_id,
+                'Deskripsi_Masalah': description,
+                'Tindakan_Korektif': action,
+                'Status': status,
+                'Tanggal_Update': datetime.datetime.now()
+            }])
+            # Di aplikasi nyata, ini akan memperbarui database
+            # incident_df = pd.concat([incident_df, new_row], ignore_index=True)
+            st.success(f"Insiden {new_id} berhasil dicatat dengan tindakan korektif!")
+            
 # --- LOGIC UTAMA APLIKASI ---
 def main():
     if 'logged_in' not in st.session_state:
@@ -234,9 +341,9 @@ def main():
             st.write(f"Role: **{st.session_state['role']}**")
             st.divider()
             
-            menu = st.radio("Menu Navigasi", 
-                           ["Dashboard Utama", "Warehouse", "Tracking Pengiriman", "Laporan Kerja", "Mitra & Supplier"])
-            
+          menu = st.radio("Menu Navigasi", 
+                             ["Dashboard Utama", "Order Status (E2E)", "Warehouse", "Tracking Pengiriman", "Laporan Kerja", "Mitra & Supplier", "Manajemen Insiden"])
+        
             st.divider()
             if st.button("Logout"):
                 st.session_state['logged_in'] = False
@@ -245,6 +352,8 @@ def main():
         # Routing Halaman
         if menu == "Dashboard Utama":
             show_dashboard()
+        elif menu == "Order Status (E2E)":
+            show_order_status()
         elif menu == "Warehouse":
             show_warehouse()
         elif menu == "Tracking Pengiriman":
@@ -253,6 +362,9 @@ def main():
             show_reports()
         elif menu == "Mitra & Supplier":
             show_partners()
+        elif menu == "Manajemen Insiden": # Tambahan
+            show_incidents()
 
 if __name__ == "__main__":
+
     main()
