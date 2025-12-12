@@ -192,8 +192,8 @@ def show_tracking():
 def show_reports():
     st.title("📈 Laporan & Analisa")
     st.markdown("Mengidentifikasi bottleneck dan mengukur performa[cite: 22].")
-
-   tab1, tab2, tab3 = st.tabs(["Performa Pengiriman", "Akar Masalah Keterlambatan", "Analisa Lead Time"]) 
+    
+    tab1, tab2, tab3 = st.tabs(["Performa Pengiriman", "Akar Masalah Keterlambatan", "Analisa Lead Time"]) 
 
     with tab1:
         # Grafik Pie Chart Status Pengiriman
@@ -368,3 +368,4 @@ def main():
 if __name__ == "__main__":
 
     main()
+
