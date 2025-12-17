@@ -4,6 +4,20 @@ import plotly.express as px
 import datetime
 import time
 
+def receive_3pl_update():
+    """
+    Simulasi data masuk dari sistem 3PL (API/Webhook).
+    Data ini biasanya datang dalam format JSON.
+    """
+    update = {
+        'ID_Pengiriman': 'SHP-002',
+        'Status': 'Delayed',
+        'Lat': -6.9175,
+        'Lon': 107.6191,
+        'Penyebab_Masalah': 'Macet Parah > 3 Jam'
+    }
+    return update
+
 # --- KONFIGURASI HALAMAN ---
 st.set_page_config(page_title="LogiSphere Control Tower", layout="wide", page_icon="🚚")
 
@@ -57,7 +71,13 @@ def get_data():
         'Status': ['Selesai'],
         'Tanggal_Update': [datetime.datetime.now()]
     })
-
+    update_baru = receive_3pl_update()
+    mask = shipment_df['ID_Pengiriman'] == update_baru['ID_Pengiriman']
+    shipment_df.loc[mask, 'Status'] = update_baru['Status']
+    shipment_df.loc[mask, 'Lat'] = update_baru['Lat']
+    shipment_df.loc[mask, 'Lon'] = update_baru['Lon']
+    shipment_df.loc[mask, 'Penyebab_Masalah'] = update_baru['Penyebab_Masalah']
+    
     return inventory_data, shipment_data, order_data, incident_data
 
 inventory_df, shipment_df, order_df, incident_df = get_data()
@@ -392,6 +412,11 @@ def main():
             st.title("LogiSphere")
             st.write(f"Role: **{st.session_state['role']}**")
             st.divider()
+            if st.button("🔄 Sinkronisasi Data 3PL"):
+                with st.spinner('Mengambil data GPS...'):
+                    time.sleep(1) # Simulasi loading API
+                    st.rerun() # Memaksa aplikasi menjalankan ulang get_data()
+            st.divider()
             
             menu = st.radio("Menu Navigasi", ["Dashboard Utama", "Order Status", "Warehouse", "Tracking Pengiriman", "Laporan Kerja", "Mitra & Supplier", "Manajemen Insiden"])
         
@@ -419,6 +444,7 @@ def main():
 if __name__ == "__main__":
 
     main()
+
 
 
 
