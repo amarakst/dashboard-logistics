@@ -40,7 +40,7 @@ def get_data():
         'Ekspedisi_3PL': ['Logistik Cepat', 'Truk Nusantara', 'Cargo Kilat', 'Logistik Cepat'],
         'Sopir': ['Budi', 'Asep', 'Joko', 'Rian'],
         'Kontak_Sopir': ['0856-7788-9900', '0857-1122-3344', '0858-5566-7788', '0856-7788-9900'],
-        'Kode_Tracking_Publik': ['SPAB-001X', 'SPAB-002Y', 'SPAB-003Z', 'SPAB-004A'],
+        'Kode_Tracking_Publik': ['LS-001X', 'LS-002Y', 'LS-003Z', 'LS-004A'],
         'ETA': [datetime.date.today(), datetime.date.today(), datetime.date.today() - datetime.timedelta(days=1), datetime.date.today() + datetime.timedelta(days=2)],
         'Lat': [-7.2575, -6.9175, -6.9667, 3.5952], # Koordinat dummy
         'Lon': [112.7521, 107.6191, 110.4167, 98.6722],
@@ -138,7 +138,7 @@ def show_public_tracking():
     st.subheader("LogiSpehere - Customer Tracking")
     
     # Form input untuk Kode Pelacakan
-    tracking_code = st.text_input("Masukkan Kode Pelacakan (Contoh: SPAB-001X)", "")
+    tracking_code = st.text_input("Masukkan Kode Pelacakan (Contoh: LS-001X)", "")
     
     if tracking_code:
         # Cari data berdasarkan Kode Pelacakan Publik
@@ -419,6 +419,7 @@ def main():
 if __name__ == "__main__":
 
     main()
+
 
 
 
