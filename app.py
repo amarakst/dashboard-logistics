@@ -78,7 +78,7 @@ def get_data():
     shipment_df.loc[mask, 'Lon'] = update_baru['Lon']
     shipment_df.loc[mask, 'Penyebab_Masalah'] = update_baru['Penyebab_Masalah']
     
-    return inventory_data, shipment_data, order_data, incident_data, shipment_df
+    return inventory_data, order_data, incident_data, shipment_df
 
 inventory_df, shipment_df, order_df, incident_df = get_data()
 
@@ -444,6 +444,7 @@ def main():
 if __name__ == "__main__":
 
     main()
+
 
 
 
